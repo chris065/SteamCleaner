@@ -2,9 +2,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Windows;
 using Microsoft.Win32;
 
 #endregion
@@ -35,26 +33,16 @@ namespace SteamCleaner.Clients
 
         public static List<string> GetGames()
         {
-            var paths = new List<string>();
-            var regPath = "";
-            var is64Bit = Environment.Is64BitOperatingSystem;
-            if (is64Bit)
+            var games = new List<string>();
+            foreach (var childKey in from registryKey in new List<RegistryKey>
             {
-                Console.WriteLine("64 Bit operating system detected");
-                regPath = @"Software\Wow6432Node\Microsoft\\Windows\CurrentVersion\Uninstall";
+                Registry.LocalMachine.OpenSubKey("Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall"),
+                Registry.LocalMachine.OpenSubKey("Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall")
+            } let childKeyNames = registryKey.GetSubKeyNames() from lower in (from child in childKeyNames where child.StartsWith("Desura_", StringComparison.Ordinal) let openSubKey = registryKey.OpenSubKey(child) where openSubKey != null select openSubKey.GetValue("InstallLocation") into value where value != null select value.ToString().ToLower() into lower where !games.Contains(lower) select lower) select lower)
+            {
+                games.Add(childKey);
             }
-            else
-            {
-                Console.WriteLine("32 Bit operating system detected");
-                regPath = @"Software\Microsoft\Windows\CurrentVersion\Uninstall";
-            }
-
-            var root = Registry.LocalMachine.OpenSubKey(regPath);
-            if (root != null)
-            {
-                paths.AddRange(from subkeyName in root.GetSubKeyNames() where subkeyName.StartsWith("Desura_", StringComparison.Ordinal) select Registry.LocalMachine.OpenSubKey(regPath + "\\" + subkeyName) into subKey select subKey?.GetValue("InstallLocation").ToString());
-            } 
-            return paths;
+            return games;
         }
     }
 }
